@@ -20,18 +20,19 @@ require 'csv'
 
 def usage (message = nil)
   if message
-    puts "ERROR: #{message}"
+    $stderr.puts "ERROR: #{message}"
   end
-  puts """Usage: 1pass2keepass.rb 1pass.csv
+  $stderr.puts """Usage: 1pass2keepass.rb 1pass.csv > keepassx.xml
 
-Takes a _TAB_ delimeted csv file from 1password and prints XML suitable for import into keepassX
+Takes a comma delimeted csv file from 1password and prints XML suitable for import into keepassX
+A useful technique is to direct this output to an XML file.
 """
   exit
 end
 
 
 input_file = ARGV[0]
-unless ARGV[0]
+unless input_file
   usage
 end
 unless File.exists?(input_file)
@@ -39,7 +40,7 @@ unless File.exists?(input_file)
 end
 
 begin
-  csv_data = CSV.open(input_file, 'rb', "\t")
+  csv_data = CSV.read(input_file)
   headers = csv_data.shift.map {|i| i.to_s }
   string_data = csv_data.map {|row| row.map {|cell| cell.to_s } }
   array_of_hashes = string_data.map {|row| Hash[*headers.zip(row).flatten] }
@@ -48,41 +49,39 @@ rescue
 end
 
 
-def usage (message = '')
-  if message
-    puts "ERROR: #{message}"
-  end
-  puts """ 
-  Usage: 1pass2keepass.rb 1pass.csv
-  Takes a _TAB_ delimeted csv file from 1password and prints XML suitable for import into keepassX
-"""
-  exit
-end
-
 doc = Document.new 
 database = doc.add_element 'database'
 group = database.add_element 'group'
-group.add_element('title').text = 'Internet'
-group.add_element('icon').text = '1'
+group.add_element('title').text = 'Import'
+group.add_element('icon').text = '26'
 
-
-def usage (message = '')
-  if message
-    puts "ERROR: #{message}"
-  end
-  puts """ 
-  Usage: 1pass2keepass.rb 1pass.csv
-  Takes a _TAB_ delimeted csv file from 1password and prints XML suitable for import into keepassX
-"""
-  exit
-end
 
 array_of_hashes.each do |row|
   entryNode = group.add_element 'entry'
-  entryNode.add_element('username').text = row['username']
+  # The username may be linked from "username" or "user".
+  if row['username']
+    # "username" is used by 1pass
+    entryNode.add_element('username').text = row['username']
+  elsif row['user']
+    # "user" is used by password gorilla.
+    entryNode.add_element('username').text = row['user']
+  end
+  
   entryNode.add_element('password').text = row['password']
   entryNode.add_element('title').text = row['title']
-  entryNode.add_element('url').text = row['URL/Location']
+ 
+  # The location has a lot of different names. 
+  if row['URL/Location']
+    # "URL/Location" isused by 1pass
+    entryNode.add_element('url').text = row['URL/Location']
+  elsif row['url']
+    # "url" is used by password gorilla
+    entryNode.add_element('url').text = row['url']
+  elsif row['hostname']
+    # "hostname" is used by some firefox export utility.
+    entryNode.add_element('url').text = row['hostname']
+  end
+
   entryNode.add_element('comment').text = row['notes']
 end
 
