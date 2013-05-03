@@ -13,6 +13,7 @@ To get around this limitation, this script will convert a CSV export from severa
 ## Requirements
 
 * Ruby 1.9 or greater
+* ruby-builder _Ruby library to facilitate programatic generation of XML markup_
 * A CSV export containing your passwords
 * Some minimal knowledge of the command line, _(but you're running Linux anyway, right ;) )_
 

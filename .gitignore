@@ -1,0 +1,3 @@
+# These are eclipse directories that do not need to be tracked.
+.project
+.loadpath

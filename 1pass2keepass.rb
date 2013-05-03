@@ -14,8 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =end
 
-require "rexml/document"
-include REXML
+require 'builder'
 require 'csv'
 
 def usage (message = nil)
@@ -48,42 +47,55 @@ rescue
   usage $!
 end
 
+# Do NOT instantiate this with the indent flag... we want minified XML in this case.
+# This is because KeePassX will not properly handle newlines in the data :/
+xml = Builder::XmlMarkup.new( :target => $stdout )
 
-doc = Document.new 
-database = doc.add_element 'database'
-group = database.add_element 'group'
-group.add_element('title').text = 'Import'
-group.add_element('icon').text = '26'
-
-
-array_of_hashes.each do |row|
-  entryNode = group.add_element 'entry'
-  # The username may be linked from "username" or "user".
-  if row['username']
-    # "username" is used by 1pass
-    entryNode.add_element('username').text = row['username']
-  elsif row['user']
-    # "user" is used by password gorilla.
-    entryNode.add_element('username').text = row['user']
-  end
-  
-  entryNode.add_element('password').text = row['password']
-  entryNode.add_element('title').text = row['title']
- 
-  # The location has a lot of different names. 
-  if row['URL/Location']
-    # "URL/Location" isused by 1pass
-    entryNode.add_element('url').text = row['URL/Location']
-  elsif row['url']
-    # "url" is used by password gorilla
-    entryNode.add_element('url').text = row['url']
-  elsif row['hostname']
-    # "hostname" is used by some firefox export utility.
-    entryNode.add_element('url').text = row['hostname']
-  end
-
-  entryNode.add_element('comment').text = row['notes']
-end
-
-doc << XMLDecl.new
-doc.write($stdout,2)
+# Set the root node
+xml.database do
+  xml.group do
+    xml.title "Import"
+    xml.icon "26"
+    
+    array_of_hashes.each do |row|
+      xml.entry do 
+        
+        # The title is pretty standard across all platforms.
+        xml.title row['title']
+        
+        # The location has a lot of different names. 
+        if row['URL/Location']
+          # "URL/Location" isused by 1pass
+          xml.url row['URL/Location']
+        elsif row['url']
+          # "url" is used by password gorilla
+          xml.url row['url']
+        elsif row['hostname']
+          # "hostname" is used by some firefox export utility.
+          xml.url row['hostname']
+        end
+        
+        # The username may be linked from "username" or "user".
+        if row['username']
+          # "username" is used by 1pass
+          xml.username row['username']
+        elsif row['user']
+          # "user" is used by password gorilla.
+          xml.username row['user']
+        end
+        
+        # Password's easy too.
+        xml.password row['password']
+        
+        notes = row['notes']
+        
+        # This will convert any new line be it mac, unix, or win, to an actual newline character.
+        notes.gsub!("\\r\\n", "\\n")
+        notes.gsub!("\\n", "\n")
+        notes.gsub!("\\r", "\n")
+        
+        xml.comment notes
+      end # xml.entry
+    end # array_of_hashes.each
+  end # xml.group
+end # xml.database
